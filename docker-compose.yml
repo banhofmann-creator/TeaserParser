@@ -12,10 +12,7 @@ services:
 
   postgres:
     image: postgres:16
-    environment:
-      POSTGRES_DB: teaserparser
-      POSTGRES_USER: teaserparser
-      POSTGRES_PASSWORD: teaserparser
+    env_file: .env
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -2,7 +2,7 @@
 name = "teaserparser"
 version = "0.1.0"
 description = "BTP - Ban's TeaserParser backend"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.135.2",
     "psycopg[binary,pool]>=3.3.3",
