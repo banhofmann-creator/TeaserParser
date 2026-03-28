@@ -1,14 +1,34 @@
+"use client";
+
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import LoginForm from "@/components/auth/LoginForm";
+import AppShell from "@/components/layout/AppShell";
+
+function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0d1117]">
+        <div className="text-center">
+          <div className="inline-block w-6 h-6 border-2 border-[#209dd7] border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  return <AppShell />;
+}
+
 export default function Home() {
   return (
-    <main className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-[#209dd7] mb-4">
-          BTP — Ban&apos;s TeaserParser
-        </h1>
-        <p className="text-gray-400">
-          AI-powered real estate opportunity parser
-        </p>
-      </div>
-    </main>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
