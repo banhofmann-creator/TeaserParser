@@ -2,10 +2,10 @@
 
 ## Project Status Summary (for context recovery)
 
-**Phases 1-12 are COMPLETE. Phase 13 (Integration & Docker) and Phase 14 (E2E Tests & Polish) remain.**
+**Phases 1-13 are COMPLETE. Phase 14 (E2E Tests & Polish) remains.**
 
 ### Backend (Phases 1-7) — COMPLETE
-- FastAPI app at `backend/app/main.py` with 7 routers, 20 endpoints
+- FastAPI app at `backend/app/main.py` with 7 routers, 21 endpoints (added `/api/config/powerbi`)
 - PostgreSQL schema (7 tables), connection pool, seed data (admin/demo users)
 - Session auth with bcrypt (`pwdlib`), role-based access (admin/user)
 - Document upload → docling parsing → LiteLLM structured extraction → Nominatim geocoding → opportunity creation
@@ -19,9 +19,73 @@
 - 22 components + 3 hooks + types + API layer (see file list below)
 - Build: clean, 0 errors, 113 kB first load JS
 
+### Docker & Integration (Phase 13) — COMPLETE
+- Dockerfile finalized with system deps, `--no-cache` for heavy docling deps
+- docker-compose.yml with restart policies, PostgreSQL exposed on 5432 for PowerBI
+- Start/stop scripts auto-generate SESSION_SECRET, wait for health, open browser
+- `.env` created with `LLM_MOCK=true` for testing
+- Added missing `/api/config/powerbi` endpoint
+
 ### What remains:
-- **Phase 13**: Docker Compose end-to-end integration test, volume persistence, mock mode, start/stop scripts
 - **Phase 14**: Playwright E2E tests, error/empty/loading states polish, edge cases
+
+---
+
+## 2026-04-01 — Phase 13 Review: Integration & Docker
+
+### Verification Results
+
+| Test | Result | Evidence |
+|------|--------|----------|
+| Docker build | PASS | Multi-stage build: Node frontend (39s) + Python backend with 142 packages (225s). Image built successfully. |
+| Containers start | PASS | PostgreSQL healthy, app started, both ports exposed (8000, 5432) |
+| `GET /api/health` | PASS | `{"status":"ok"}` |
+| Frontend serves at `/` | PASS | HTTP 200, `<title>BTP - Ban's TeaserParser</title>` |
+| Login (demo) | PASS | `{"id":2,"username":"demo","display_name":"Demo User","role":"user"}` |
+| Login (admin) | PASS | `{"id":1,"username":"admin","display_name":"Admin","role":"admin"}` |
+| `GET /api/auth/me` | PASS | Returns correct user from session |
+| Upload + parse (mock) | PASS | Document saved, opportunity created with all 16 fields, geocoded (29.78, -96.15) |
+| `GET /api/opportunities` | PASS | Returns array with vote_score, vote_count |
+| `GET /api/opportunities/1` | PASS | Full detail with documents array |
+| Upvote | PASS | `{"action":"voted","vote":1,"vote_score":1}` |
+| Add comment | PASS | Comment with user info and timestamp |
+| Assign (admin) | PASS | `{"ok":true,"assigned_to":2}` |
+| Progress note (assigned user) | PASS | Note created with user info |
+| Chat greeting | PASS | Personalized: "Hello Demo User!" |
+| Chat recommendations | PASS | Portfolio analysis response |
+| Chat archive action | PASS | Status changed to cancelled, verified via GET |
+| Chat history | PASS | 6 messages (3 user + 3 assistant), actions included |
+| `GET /api/config/powerbi` | PASS | `{"embed_url":null}` (no URL configured) |
+| Document download | PASS | HTTP 200, 40961 bytes (matches upload size) |
+| Volume persistence | PASS | `docker compose restart` → login → opportunity still exists, document still downloadable |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `Dockerfile` | Added `libpq5` system dep, copied `.python-version`, added `--no-cache` to `uv sync` for smaller image |
+| `docker-compose.yml` | Added `restart: unless-stopped` to both services, exposed PostgreSQL port 5432 for PowerBI DirectQuery |
+| `backend/app/main.py` | Added `GET /api/config/powerbi` endpoint returning embed URL from settings |
+| `scripts/start_mac.sh` | Auto-generates `SESSION_SECRET`, waits for health check, opens browser, shows login info |
+| `scripts/start_windows.ps1` | Same improvements as mac script (PowerShell equivalent) |
+| `scripts/stop_mac.sh` | Added hint about `docker compose down -v` to remove data |
+| `scripts/stop_windows.ps1` | Same improvement |
+| `.env` | Created with `LLM_MOCK=true` for testing without API key |
+
+### Design Decisions
+
+- **PostgreSQL port exposed (5432)**: Enables PowerBI Desktop to connect directly via DirectQuery or Import mode without needing an on-premises data gateway for local dev.
+- **`restart: unless-stopped`**: Containers auto-restart on crash or host reboot, but respect manual `docker compose down`.
+- **`--no-cache` on `uv sync`**: docling pulls ~200MB of torch/transformers. `--no-cache` avoids keeping a second copy in the uv cache layer, reducing image size.
+- **`libpq5` system dep**: Required at runtime by psycopg binary. Without it, the container would fail on import with a missing `libpq.so`.
+- **Health check wait in scripts**: Start scripts poll `/api/health` for up to 60 seconds before declaring success. Prevents the user from opening a browser to a 502.
+- **Auto-generated SESSION_SECRET**: Addresses the Phase 1 review note. New `.env` files get a random 32-byte hex secret automatically.
+
+### Notes
+
+- Docker image is large due to docling's dependencies (torch, transformers, nvidia CUDA libs — 142 packages). `--no-cache` on `uv sync` helps avoid doubling the size.
+- Mock mode (`LLM_MOCK=true`) fully tested end-to-end. For production use with real LLM, user must set `OPENROUTER_API_KEY` and `LLM_MOCK=false`.
+- Nominatim geocoding for "100 Main Street, Austin, TX, US" returns coordinates ~50mi east of downtown Austin. Acceptable for mock data; real teasers with full addresses will be more accurate.
 
 ---
 

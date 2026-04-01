@@ -51,6 +51,11 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/api/config/powerbi")
+async def powerbi_config():
+    return {"embed_url": settings.powerbi_embed_url or None}
+
+
 # Serve frontend static files (Next.js export) if the directory exists
 if STATIC_DIR.is_dir():
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
