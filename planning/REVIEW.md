@@ -2,7 +2,7 @@
 
 ## Project Status Summary (for context recovery)
 
-**Phases 1-13 are COMPLETE. Phase 14 (E2E Tests & Polish) remains.**
+**All 14 phases are COMPLETE. Project is fully built and tested.**
 
 ### Backend (Phases 1-7) — COMPLETE
 - FastAPI app at `backend/app/main.py` with 7 routers, 21 endpoints (added `/api/config/powerbi`)
@@ -26,8 +26,71 @@
 - `.env` created with `LLM_MOCK=true` for testing
 - Added missing `/api/config/powerbi` endpoint
 
-### What remains:
-- **Phase 14**: Playwright E2E tests, error/empty/loading states polish, edge cases
+### E2E Tests & Polish (Phase 14) — COMPLETE
+- Playwright E2E: 25 tests, 5 test suites (auth, navigation, map, opportunities, upload, chat)
+- Bug fixes: upload API field name mismatch, vote response missing fields, documents type safety
+- All empty/loading/error states reviewed and verified across all components
+
+---
+
+## 2026-04-01 — Phase 14 Review: E2E Tests & Polish
+
+### Verification Results
+
+| Test Suite | Tests | Result |
+|------------|-------|--------|
+| Authentication | 5 | PASS — login form, invalid credentials, login demo/admin, logout |
+| Navigation | 6 | PASS — sidebar items, table/upload/dashboard/documents views, chat toggle |
+| Map View | 3 | PASS — default view, Leaflet container, markers |
+| Opportunities | 5 | PASS — table headers, data, sorting, filters, detail view |
+| Upload | 3 | PASS — upload zone visible, PDF upload triggers parsing, parsed result shows details |
+| Chat | 3 | PASS — panel opens, send message gets response, analysis question response |
+| **Total** | **25** | **ALL PASS (12.6s)** |
+
+### Bugs Found and Fixed
+
+| Bug | Severity | Fix |
+|-----|----------|-----|
+| Frontend upload sends `files` (plural) but backend expects `file` (singular) | CRITICAL | Fixed `api.ts` to send `file` key, upload single file at a time |
+| Vote endpoint missing `vote_count` and `user_vote` in response | MEDIUM | Added to backend `votes/routes.py` response |
+| `DocumentList` crashes if `documents` prop is undefined (list vs detail response) | MEDIUM | Made `documents` prop optional with `= []` default |
+| `Opportunity.documents` type required but only present in detail response | LOW | Changed to optional `documents?: Document[]` |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `test/package.json` | Playwright devDependency |
+| `test/playwright.config.ts` | Chromium project, baseURL http://localhost:8000 |
+| `test/e2e/helpers.ts` | `login()` and `navigateTo()` helpers |
+| `test/e2e/auth.spec.ts` | 5 auth tests |
+| `test/e2e/navigation.spec.ts` | 6 navigation tests |
+| `test/e2e/map.spec.ts` | 3 map tests |
+| `test/e2e/opportunities.spec.ts` | 5 opportunities tests |
+| `test/e2e/upload.spec.ts` | 3 upload tests |
+| `test/e2e/chat.spec.ts` | 3 chat tests |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `frontend/src/lib/api.ts` | Fixed `uploadDocuments` to send `file` (singular), added `?parse=true` |
+| `frontend/src/types/index.ts` | Made `documents` field optional on `Opportunity` |
+| `frontend/src/components/documents/DocumentList.tsx` | Made `documents` prop optional with default |
+| `backend/app/votes/routes.py` | Added `vote_count` and `user_vote` to vote response |
+
+### UI States Review
+
+| Component | Loading | Empty | Error |
+|-----------|---------|-------|-------|
+| OpportunityTable | Spinner via AppShell | "No opportunities found" | Handled in useOpportunities |
+| FileManager | Spinner | "No documents found" | Catches error, shows empty |
+| CommentSection | "Loading comments..." | "No comments yet" | Silent catch |
+| ProgressSection | "Loading progress notes..." | "No progress notes yet" | Silent catch, permission gate |
+| UploadZone | Spinner + "Uploading and parsing..." | Drop zone visible | Red error banner |
+| ChatPanel | Spinner | Robot icon + help text | Error in useChat |
+| PowerBIDashboard | Spinner | Setup instructions | Catches fetch error |
+| Map | LoadingView spinner | Map renders empty | N/A |
 
 ---
 

@@ -22,10 +22,10 @@ function fileIcon(type: string | null): string {
 
 interface Props {
   opportunityId: number;
-  documents: Document[];
+  documents?: Document[];
 }
 
-export default function DocumentList({ documents }: Props) {
+export default function DocumentList({ documents = [] }: Props) {
   if (documents.length === 0) {
     return <p className="text-xs text-gray-600">No documents attached.</p>;
   }

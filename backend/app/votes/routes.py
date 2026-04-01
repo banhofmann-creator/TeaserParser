@@ -50,14 +50,21 @@ async def cast_vote(opp_id: int, body: VoteRequest, user: dict = Depends(get_cur
             conn.execute("UPDATE votes SET vote = %s WHERE id = %s", (body.vote, existing[0]))
             action = "changed"
 
-        # Get current score
+        # Get current score and count
         score_row = conn.execute(
-            "SELECT COALESCE(SUM(vote), 0) FROM votes WHERE opportunity_id = %s",
+            "SELECT COALESCE(SUM(vote), 0), COUNT(*) FROM votes WHERE opportunity_id = %s",
             (opp_id,),
         ).fetchone()
         conn.commit()
 
-    return {"action": action, "vote": body.vote if action != "removed" else None, "vote_score": int(score_row[0])}
+    user_vote = body.vote if action != "removed" else None
+    return {
+        "action": action,
+        "vote": user_vote,
+        "vote_score": int(score_row[0]),
+        "vote_count": int(score_row[1]),
+        "user_vote": user_vote,
+    }
 
 
 class CommentRequest(BaseModel):

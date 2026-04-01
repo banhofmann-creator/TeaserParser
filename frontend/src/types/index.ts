@@ -40,7 +40,7 @@ export interface Opportunity {
   updated_at: string;
   vote_score: number;
   vote_count: number;
-  documents: Document[];
+  documents?: Document[];
 }
 
 // ── Document ─────────────────────────────────────────
